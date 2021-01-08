@@ -1,0 +1,1541 @@
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 1   
+
+
+C51 COMPILER V6.10, COMPILATION OF MODULE JKZK
+OBJECT MODULE PLACED IN .\Jkzk.OBJ
+COMPILER INVOKED BY: C:\KEIL\C51\BIN\C51.EXE .\Jkzk.c OPTIMIZE(9,SPEED) REGFILE(.\jkzk.ORC) 
+
+stmt level    source
+
+   1          /*==============================*/
+   2          /*	Jkzk.C			*/
+   3          /*	2000.6.20		*/
+   4          
+   5          /*==============*/
+   6          /*  包含头文件  */
+   7          /*==============*/
+   8          #include <AT89x52.h>
+   9          #include <stdarg.h>
+  10          #include <intrins.h>
+  11          #include "jkzk.h"
+  12          
+  13          /*==============*/
+  14          /*  系统宏定义  */
+  15          /*==============*/
+  16          #define FREQ    11.0592
+  17          #define DELAY_SCALE 100 /*1000/(12/FREQ)*/
+  18          #define TIMEBASE    50     /*  定时中断时间,单位ms */
+  19          #define T0_INIT     19457   /*0xffff-(TIMEBASE*1000)/(12/FREQ)  */
+  20          #define WAITTIME 10
+  21          #define COMP_ZERO   200
+  22          
+  23          /*==================*/
+  24          /*  系统变量定义    */
+  25          /*==================*/
+  26          
+  27          unsigned char load,solar_state;
+  28          unsigned char Delay_change,Delay_disconnect;
+  29          unsigned char sec,time,min,hour;
+  30          unsigned char porta,portb;
+  31          idata unsigned char buf[6];               /*  接收缓冲区，这是一个先进先出对列  */
+  32          unsigned char point;
+  33          unsigned long chargeah,dischargeah;
+  34          unsigned int btv;
+  35          unsigned char please;
+  36          unsigned int adresult;
+  37          bit OutDevice;
+  38          bit newday;                           /*  每天 00:00 改变此标志,存当天数据     */
+  39          bit IsSolar;
+  40          bit received;
+  41          bit TEST;
+  42          bit TXEN;
+  43          bit DISPLAY;
+  44          
+  45          
+  46          /*==================*/
+  47          /*  输入输出口定义  */
+  48          /*==================*/
+  49          sbit Do=0x94;
+  50          sbit di=0x95;
+  51          sbit clk=0x96;
+  52          sbit cs=0x97;
+  53          
+  54          
+  55          sbit RS=0xa0;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 2   
+
+  56          sbit rw=0xa1;
+  57          sbit e=0xa2;
+  58          sbit paen=0xa3;
+  59          sbit pben=0xa4;
+  60          sbit slk=0xa5;		//display clock
+  61          sbit dta=0xa6;		// display data
+  62          sbit display_pb=0xa7;	//display button
+  63          
+  64          sbit cs0=0xb2;
+  65          sbit wdg=0xb4;
+  66          sbit dout=0xb5;
+  67          sbit out_en=0xb6;	//P3.6
+  68          sbit sk=0xb7;
+  69          
+  70          
+  71          /*======================*/
+  72          /*      函数预说明      */
+  73          /*======================*/
+  74          lcd_init(void);
+  75          /*monitor*/ aprintf(char *format,...) reentrant;
+  76          delay(unsigned int times);
+  77          /*monitor*/ set_eprom(unsigned char command);
+  78          /*monitor*/ unsigned int eprom(unsigned char address);
+  79          unsigned char wait_key();
+  80          /*monitor*/ write_eprom(unsigned char address,unsigned int Data);
+  81          sendstr(unsigned char *Data);
+  82          unsigned char key();
+  83          sendpacket(unsigned char,unsigned int);
+  84          void talk(void);
+  85          void outchar(char);
+  86          
+  87          arg(){
+  88   1      //    if(eprom(DAY)>=400)while(1){
+  89   1      //        lcd_init();
+  90   1      //        aprintf("ERROR 601");
+  91   1      //    }
+  92   1      //	wdg=~wdg;
+  93   1          write_eprom(1,eprom(TAPER));
+  94   1          write_eprom(2,(eprom(TAPER)*4+eprom(BOOST))/5);
+  95   1          write_eprom(3,(eprom(TAPER)*3+eprom(BOOST)*2)/5);
+  96   1          write_eprom(4,(eprom(TAPER)*2+eprom(BOOST)*3)/5);
+  97   1          write_eprom(5,(eprom(TAPER)+eprom(BOOST)*4)/5);
+  98   1          write_eprom(6,eprom(BOOST));
+  99   1      }
+ 100          
+ 101          /*==============*/
+ 102          /*  系统初始化  */
+ 103          /*==============*/
+ 104          init()
+ 105          {
+ 106   1          unsigned char i;
+ 107   1          out_en=0;
+ 108   1       //   portb=0;
+ 109   1       //   portb|=LOAD;
+ 110   1       //   P0=portb;
+ 111   1       //   porta=0;
+ 112   1       //   paen=0;
+ 113   1       //   pben=0;
+ 114   1       //   port=P0=LAMP;
+ 115   1       //   port_out_en=1;
+ 116   1       //   port_out_en=0;
+ 117   1          porta=portb=P0=LAMP;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 3   
+
+ 118   1          paen=pben=1;
+ 119   1          paen=pben=0;
+ 120   1          load=0;                   
+ 121   1          for(i=0;i<12;i++)outchar(3);
+ 122   1          write_eprom(BT_V_MIN,1024);
+ 123   1          /*  LCD显*/
+ 124   1          OutDevice=LCD;
+ 125   1          lcd_init();
+ 126   1          /*  系统状态判别    */
+ 127   1      #if MODEL==70    
+ 128   1          aprintf("\a   JRT-48-100");
+ 129   1      #endif
+ 130   1      #if MODEL==71
+                  aprintf("\a   JRT-24-100");
+              #endif
+ 133   1      	aprintf("\nSystem Init...");
+ 134   1          delay(8000);
+ 135   1          TXEN=1;
+ 136   1          point=0;
+ 137   1          if(eprom(SYSTEM_FLAG)!=MODEL){
+ 138   2              aprintf("\aEPROM ERROR!\nLoad Default...");
+ 139   2              wait_key();
+ 140   2              write_eprom(BOOST,BOOST_DEFAULT_VALUE);
+ 141   2              write_eprom(TAPER,TAPER_DEFAULT_VALUE);
+ 142   2              write_eprom(FLOAT_MAX_S,FLOAT_MAX_DEFAULT_VALUE);
+ 143   2              write_eprom(FLOAT_MIN_S,FLOAT_MIN_DEFAULT_VALUE);
+ 144   2              write_eprom(DELAY_CHANGE,DELAY_CHANGE_DEFAULT_VALUE);
+ 145   2              write_eprom(BOOST_BELOW,BOOST_BELOW_DEFAULT_VALUE);
+ 146   2              write_eprom(COMP_TEMP,COMP_TEMP_DEFAULT_VALUE);
+ 147   2              write_eprom(BT_MIN,BT_MIN_DEFAULT_VALUE);
+ 148   2              write_eprom(BT_MAX,BT_MAX_DEFAULT_VALUE);
+ 149   2              write_eprom(BT_RELOAD,BT_RELOAD_DEFAULT_VALUE);
+ 150   2              write_eprom(DELAY_DISCONNECT,DELAY_DISCONNECT_DEFAULT_VALUE);
+ 151   2              for(i=PASSWORD;i<PASSWORD+8;i++)write_eprom(i,'8');
+ 152   2              for(i=CLIP;i<CLIP+16;i++)write_eprom(i,128);
+ 153   2              write_eprom(SYSTEM_FLAG,MODEL);
+ 154   2          }
+ 155   1          arg();                                
+ 156   1          /*  定时器0初始化    */
+ 157   1      //    IE=0x82;
+ 158   1      	IE=0x12;
+ 159   1      	IP=0x10;
+ 160   1          SCON=0x70;
+ 161   1          TMOD=0x21;
+ 162   1          TH1=0xfd;
+ 163   1          PCON=0;
+ 164   1          TR0=TR1=1;
+ 165   1          EA=1;
+ 166   1      }
+ 167          
+ 168          
+ 169          
+ 170          /*monitor*/ int ad(unsigned char ch)
+ 171          {
+ 172   1          union{
+ 173   1              unsigned char i[2];
+ 174   1              unsigned long l;
+ 175   1          }a;
+ 176   1          unsigned int result,sum;
+ 177   1          porta=((porta&0xf0)|ch);
+ 178   1          P0=porta;
+ 179   1          paen=1;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 4   
+
+ 180   1          paen=0;
+ 181   1          sum=0;
+ 182   1          for(a.i[0]=0;a.i[0]<255;a.i[0]++);
+ 183   1          for(a.i[0]=0;a.i[0]<16;a.i[0]++){
+ 184   2          	result=0;
+ 185   2          	sk=0;
+ 186   2          	dout=1;
+ 187   2          	cs0=0;
+ 188   2          	while(!dout);
+ 189   2          	sk=1;
+ 190   2          	sk=0;
+ 191   2          	sk=1;
+ 192   2          	result|=dout;
+ 193   2          	sk=0;
+ 194   2          	for(a.i[1]=0;a.i[1]<11;a.i[1]++){
+ 195   3              	sk=1;
+ 196   3              	result=(result<<1)|dout;
+ 197   3              	sk=0;
+ 198   3              }
+ 199   2          	cs0=sk=dout=1;
+ 200   2          	sum+=result;
+ 201   2          	wdg=~wdg;
+ 202   2          }
+ 203   1          result=sum/16;
+ 204   1      //    a.l=128+eprom(CLIP+ch);
+ 205   1      //    a.l=result*a.l;
+ 206   1      //    result=a.l/1024;
+ 207   1          return result;
+ 208   1      }
+ 209          
+ 210                  /*
+ 211          monitor ad_get(unsigned char ch)
+ 212          {
+ 213                  if(ch==LOAD_V)return ad_get(BT_V)-ad(ch);
+ 214                  if(ch==TEMP_BT)return (ad(ch)*4-2732-COMP_ZERO);
+ 215                  if(ch==BT_V)return ad(ch)-(eprom(COMP_TEMP)*(MODEL==71?12:24)*ad_get(TEMP_BT));
+ 216                  if(ch==LOAD_I)return ad(ch)/2;
+ 217                  if(ch==BT_I)return ad(ch);
+ 218                  if(ch==SR_I0)portb=1;ch=BT_I;
+ 219                  if(ch==SR_I1)portb=2;ch=BT_I;
+ 220                  if(ch==SR_I2)portb=4;ch=BT_I;
+ 221                  if(ch==SR_I3)portb=8;ch=BT_I;
+ 222                  if(ch==SR_I4)portb=0x10;ch=BT_I;
+ 223                  if(ch==SR_I5)portb=0x20;ch=BT_I;
+ 224              if(load!=0)portb|=LOAD;else portb&=~LOAD;
+ 225              P0=portb;
+ 226              pben=1;
+ 227              pben=0;
+ 228              return ad(ch);
+ 229          }       */
+ 230          /*monitor*/ ad_get(unsigned char ch)
+ 231          {
+ 232   1      	unsigned int tem;
+ 233   1      //    EA=0;
+ 234   1          switch(ch){
+ 235   2              case LOAD_V:
+ 236   2              	tem=ad(ch)/4;
+ 237   2              	if(btv>tem)return btv-tem;
+ 238   2              	return 0;
+ 239   2              case SR_V0:
+ 240   2              case SR_V1:
+ 241   2              case SR_V2:
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 5   
+
+ 242   2              case SR_V3:
+ 243   2              case SR_V4:
+ 244   2              case SR_V5:
+ 245   2                portb=portb|0x3f;
+ 246   2                //if(load!=0)portb&=~LOAD;else portb|=LOAD;
+ 247   2                P0=portb;
+ 248   2                pben=1;
+ 249   2                pben=0;
+ 250   2                tem=ad(ch);
+ 251   2                return btv+1000-((tem)*2)/5-tem/100;
+ 252   2              case TEMP_BT:
+ 253   2              	tem=(ad(ch)-2732-COMP_ZERO)/10;
+ 254   2              	if(tem>100)return 0;
+ 255   2              	return tem;
+ 256   2              case BT_V:return ad(ch)/4;
+ 257   2              case LOAD_I:return ad(ch)/8;                                             
+ 258   2              case BT_I:return ad(ch)/4;
+ 259   2              case SR_I0:portb=(portb|0x3f)&0xfe;ch=BT_I;break;
+ 260   2              case SR_I1:portb=(portb|0x3f)&0xfd;ch=BT_I;break;
+ 261   2              case SR_I2:portb=(portb|0x3f)&0xfb;ch=BT_I;break;
+ 262   2              case SR_I3:portb=(portb|0x3f)&0xf7;ch=BT_I;break;
+ 263   2              case SR_I4:portb=(portb|0x3f)&0xef;ch=BT_I;break;
+ 264   2              case SR_I5:portb=(portb|0x3f)&0xdf;ch=BT_I;break;
+ 265   2              default:return 0;
+ 266   2          }
+ 267   1          //if(load!=0)portb&=~LOAD;else portb|=LOAD;
+ 268   1          P0=portb;
+ 269   1          pben=1;
+ 270   1          pben=0;
+ 271   1      //    EA=1;
+ 272   1          return ad(ch)/4;
+ 273   1      }
+ 274          
+ 275          rad_get(unsigned char CH)
+ 276          {
+ 277   1      	please=CH;
+ 278   1      	for(CH=0;CH<255;CH++){
+ 279   2      		if(please==0xff)return adresult;
+ 280   2        		delay(20);
+ 281   2         	}
+ 282   1      }
+ 283          
+ 284          //interrupt [0x0b] void T0_int (void)
+ 285          void T0_int (void) interrupt 1
+ 286          {
+ 287   1      	code unsigned char LEDTABLE[]={0x3,0x9f,0x25,0x0d,0x99,0x49,0x41,0x1f,0x1,0x09,0xff};
+ 288   1          static unsigned char ms;
+ 289   1          static unsigned char next_state;
+ 290   1          unsigned int value;
+ 291   1          unsigned char tt[12];
+ 292   1      
+ 293   1          /*定时器初值设置*/
+ 294   1          TH0=T0_INIT/256;
+ 295   1          TL0=T0_INIT%256;
+ 296   1      	if(please!=0xff){
+ 297   2      		adresult=ad_get(please);
+ 298   2      		please=0xff;
+ 299   2      	}
+ 300   1      	if(received)talk();
+ 301   1          /*50mS加一*/
+ 302   1          if((ms++)==(1000/TIMEBASE-1)){
+ 303   2      
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 6   
+
+ 304   2              /*看门狗复位*/
+ 305   2              wdg=~wdg;
+ 306   2              /*1秒*/
+ 307   2              ms=0;
+ 308   2              if(DISPLAY){
+ 309   3                      	value=ad_get(LOAD_I);
+ 310   3      //                   outchar(value%10);
+ 311   3                         tt[0]=LEDTABLE[value%10];
+ 312   3                         value/=10;
+ 313   3      //                   outchar(
+ 314   3      				tt[1]=LEDTABLE[value%10]-1;
+ 315   3                         value/=10;
+ 316   3      //                   outchar(value%10);
+ 317   3      				tt[2]=LEDTABLE[value%10];
+ 318   3                         value/=10;
+ 319   3      //                   outchar(value%10);
+ 320   3      				tt[3]=LEDTABLE[value%10];
+ 321   3                         value=btv;
+ 322   3      //                   outchar(value%10);
+ 323   3      				tt[4]=LEDTABLE[value%10];
+ 324   3                         value/=10;
+ 325   3      //                   outchar(value%10+0x80);
+ 326   3      				tt[5]=LEDTABLE[value%10]-1;
+ 327   3                         value/=10;
+ 328   3      //                   outchar(value%10);
+ 329   3      				tt[6]=LEDTABLE[value%10];
+ 330   3                         value/=10;
+ 331   3      //                   outchar(value%10);
+ 332   3      				tt[7]=LEDTABLE[value%10];
+ 333   3                         value=ad_get(BT_I);
+ 334   3      //                   outchar(value%10);
+ 335   3      				tt[8]=LEDTABLE[value%10];
+ 336   3                         value/=10;
+ 337   3      //                   outchar(value%10+0x80);
+ 338   3      				tt[9]=LEDTABLE[value%10]-1;
+ 339   3                         value/=10;
+ 340   3      //                   outchar(value%10);
+ 341   3      				tt[10]=LEDTABLE[value%10];
+ 342   3                         value/=10;
+ 343   3      //                   outchar(value%10);
+ 344   3      				tt[11]=LEDTABLE[value%10];
+ 345   3        				outchar(tt[0]);
+ 346   3        				outchar(tt[1]);
+ 347   3        				outchar(tt[2]);
+ 348   3        				outchar(tt[3]);
+ 349   3        				outchar(tt[4]);
+ 350   3        				outchar(tt[5]);
+ 351   3        				outchar(tt[6]);
+ 352   3        				outchar(tt[7]);
+ 353   3        				outchar(tt[8]);
+ 354   3        				outchar(tt[9]);
+ 355   3        				outchar(tt[10]);
+ 356   3        				outchar(tt[11]);
+ 357   3                       }
+ 358   2      
+ 359   2              /*充电流程控制*/
+ 360   2              btv=ad_get(BT_V);
+ 361   2              value=btv-(eprom(COMP_TEMP)*(MODEL==71?12:24)*ad_get(TEMP_BT))/100;
+ 362   2              if(solar_state<7){
+ 363   3                  if(value<eprom(solar_state-1)){
+ 364   4                      if(next_state==solar_state-1){
+ 365   5                          if(Delay_change==0)solar_state-=1;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 7   
+
+ 366   5                      }
+ 367   4                      else{
+ 368   5                          next_state=solar_state-1;
+ 369   5                          Delay_change=TEST?2:eprom(DELAY_CHANGE);
+ 370   5                      }
+ 371   4                  }
+ 372   3                  else {
+ 373   4                      if(value>=eprom(solar_state)){
+ 374   5                          if(next_state==solar_state+1){
+ 375   6                              if(Delay_change==0)solar_state+=1;
+ 376   6                          }
+ 377   5                          else{
+ 378   6                              next_state=solar_state+1;
+ 379   6                              Delay_change=TEST?2:eprom(DELAY_CHANGE);
+ 380   6                          }
+ 381   5                      }
+ 382   4                      else next_state=0;
+ 383   4                  }
+ 384   3              }
+ 385   2              else{
+ 386   3                  if(value<(solar_state==13?eprom(BOOST_BELOW):eprom(FLOAT_MIN_S))){
+ 387   4                      if(next_state==solar_state+1){
+ 388   5                          if(Delay_change==0)solar_state=solar_state==13?1:solar_state+1;
+ 389   5                      }
+ 390   4                      else{
+ 391   5                          next_state=solar_state+1;
+ 392   5                          Delay_change=TEST?2:eprom(DELAY_CHANGE);
+ 393   5                      }
+ 394   4                  }
+ 395   3                  else {
+ 396   4                      if(value>eprom(FLOAT_MAX_S) && solar_state!=7){
+ 397   5                          if(next_state==solar_state-1){
+ 398   6                              if(Delay_change==0)solar_state-=1;
+ 399   6                          }
+ 400   5                          else{
+ 401   6                              next_state=solar_state-1;
+ 402   6                              Delay_change=TEST?2:eprom(DELAY_CHANGE);
+ 403   6                          }
+ 404   5                      }
+ 405   4                      else next_state=0;
+ 406   4                  }
+ 407   3              }
+ 408   2              if(value>eprom(DATA))write_eprom(DATA,value);
+ 409   2              if(value<eprom(DATA+1))write_eprom(DATA+1,value);
+ 410   2              chargeah+=ad_get(BT_I);
+ 411   2              dischargeah+=ad_get(LOAD_I);
+ 412   2              write_eprom(DATA+2,chargeah/36000);
+ 413   2              write_eprom(DATA+3,dischargeah/36000);
+ 414   2      
+ 415   2              if(!load){
+ 416   3                  if(value>eprom(BT_MAX)){
+ 417   4                      if(Delay_disconnect==0){
+ 418   5                          porta|=(ALARM_HI|UJ);
+ 419   5                          load=1;
+ 420   5      					sendpacket(0xfe,load);
+ 421   5                      }
+ 422   4                  }
+ 423   3                  else{
+ 424   4                      if(value<eprom(BT_MIN)){
+ 425   5                          if(Delay_disconnect==0){
+ 426   6                              porta|=(ALARM_LO|UJ);
+ 427   6                              load=2;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 8   
+
+ 428   6      						sendpacket(0xfe,load);
+ 429   6                          }
+ 430   5                      }
+ 431   4                      else{
+ 432   5                          Delay_disconnect=TEST?2:eprom(DELAY_DISCONNECT);
+ 433   5                      }
+ 434   4                  }
+ 435   3              }
+ 436   2              else{
+ 437   3                  if(load==1){
+ 438   4                      if(value<eprom(BT_MAX)-40){
+ 439   5                          porta&=~(ALARM_HI|UJ);
+ 440   5                          load=0;
+ 441   5      					sendpacket(0xfe,load);
+ 442   5                      }
+ 443   4                  }
+ 444   3                  else{
+ 445   4                      if(value>eprom(BT_RELOAD)){
+ 446   5                          porta&=~(ALARM_LO|UJ);
+ 447   5                          load=0;
+ 448   5      					sendpacket(0xfe,load);
+ 449   5                      }
+ 450   4                  }
+ 451   3              }
+ 452   2              Delay_change--;
+ 453   2              Delay_disconnect--;
+ 454   2      
+ 455   2              if((sec++)==59){
+ 456   3                  sec=0;
+ 457   3                  time++;
+ 458   3      			sendpacket(0xfe,load);
+ 459   3                  if((min++)==59){
+ 460   4                      min=0;
+ 461   4                      if((hour++)==23)newday=1;
+ 462   4      
+ 463   4                  }
+ 464   3              }
+ 465   2          }
+ 466   1          value=P0;
+ 467   1      
+ 468   1          P0=porta;
+ 469   1          paen=1;
+ 470   1          paen=0;
+ 471   1          switch(solar_state){
+ 472   2              case 1:
+ 473   2              case 13:portb=0;break;
+ 474   2              case 2:
+ 475   2              case 12:portb=0x20;break;
+ 476   2              case 3:
+ 477   2              case 11:portb=0x30;break;
+ 478   2              case 4:
+ 479   2              case 10:portb=0x38;break;
+ 480   2              case 5:
+ 481   2              case 9:portb=0x3c;break;
+ 482   2              case 6:
+ 483   2              case 8:portb=0x3e;break;
+ 484   2              case 7:portb=0x3f;break;
+ 485   2              default:solar_state=1;
+ 486   2          }
+ 487   1          if(load!=0)portb|=LOAD;else portb&=~LOAD;
+ 488   1          if(!IsSolar){
+ 489   2              P0=portb;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 9   
+
+ 490   2              pben=1;
+ 491   2              pben=0;
+ 492   2          }
+ 493   1          P0=value;
+ 494   1      }
+ 495          
+ 496          void talk(void)
+ 497          {
+ 498   1      	unsigned char value;
+ 499   1          	if(buf[1]==1){			//read variable
+ 500   2          		switch(buf[2]){
+ 501   3           			case 0:         //btv
+ 502   3             				sendpacket(0,btv);
+ 503   3             		        break;
+ 504   3             	        case 1:
+ 505   3             	        	sendpacket(1,ad_get(LOAD_V));
+ 506   3             	            break;
+ 507   3             	        case 2:
+ 508   3             	        	sendpacket(2,ad_get(SR_V0));
+ 509   3             	            break;
+ 510   3             	        case 3:
+ 511   3             	        	sendpacket(3,ad_get(SR_V1));
+ 512   3             	            break;
+ 513   3             	        case 4:
+ 514   3             	        	sendpacket(4,ad_get(SR_V2));
+ 515   3             	            break;
+ 516   3             	        case 5:
+ 517   3             	        	sendpacket(5,ad_get(SR_V3));
+ 518   3             	            break;
+ 519   3             	        case 6:
+ 520   3             	        	sendpacket(6,ad_get(SR_V4));
+ 521   3             	            break;
+ 522   3             	        case 7:
+ 523   3             	        	sendpacket(7,ad_get(SR_V5));
+ 524   3             	            break;
+ 525   3             	        case 8:
+ 526   3             	        	sendpacket(8,ad_get(TEMP_BT)+20);
+ 527   3             	            break;
+ 528   3             	        case 9:
+ 529   3             	        	sendpacket(9,(int)solar_state);
+ 530   3             	            break;
+ 531   3             	        case 10:
+ 532   3             	        	sendpacket(10,(int)load);
+ 533   3             	            break;
+ 534   3             	        case 14:    
+ 535   3             	        	sendpacket(14,ad_get(LOAD_I));
+ 536   3             	            break;
+ 537   3             	        case 15:
+ 538   3             	        	sendpacket(15,ad_get(BT_I));
+ 539   3             	            break;
+ 540   3             	        case 0x10:
+ 541   3             	        	sendpacket(0x10,ad_get(SR_I0));
+ 542   3             	            break;
+ 543   3             	        case 0x11:
+ 544   3             	        	sendpacket(0x11,ad_get(SR_I1));
+ 545   3             	            break;
+ 546   3             	        case 0x12:
+ 547   3             	        	sendpacket(0x12,ad_get(SR_I2));
+ 548   3             	            break;
+ 549   3             	        case 0x13:
+ 550   3             	        	sendpacket(0x13,ad_get(SR_I3));
+ 551   3             	            break;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 10  
+
+ 552   3             	        case 0x14:
+ 553   3             	        	sendpacket(0x14,ad_get(SR_I4));
+ 554   3             	            break;
+ 555   3             	        case 0x15:
+ 556   3             	        	sendpacket(0x15,ad_get(SR_I5));
+ 557   3             	            break;
+ 558   3             	        case 0x20:
+ 559   3             	           	sendpacket(0x20,eprom(BOOST));	//BOOST
+ 560   3             	            break;
+ 561   3             	        case 0x21:
+ 562   3             	        	sendpacket(0x21,eprom(TAPER));	//taper
+ 563   3             	            break;
+ 564   3             	        case 0x22:
+ 565   3             	        	sendpacket(0x22,eprom(FLOAT_MAX_S));
+ 566   3             	            break;
+ 567   3             	        case 0x23:
+ 568   3             	        	sendpacket(0x23,eprom(FLOAT_MIN_S));
+ 569   3             	            break;
+ 570   3             	        case 0x24:
+ 571   3             	        	sendpacket(0x24,eprom(BOOST_BELOW));
+ 572   3             	            break;
+ 573   3             	        case 0x25:
+ 574   3             	        	sendpacket(0x25,eprom(COMP_TEMP));
+ 575   3             	            break;
+ 576   3             	        case 0x26:
+ 577   3             	        	sendpacket(0x26,eprom(DELAY_CHANGE));
+ 578   3             	            break;
+ 579   3             	        case 0x27:
+ 580   3             	        	sendpacket(0x27,eprom(BT_MIN));
+ 581   3             	            break;
+ 582   3             	        case 0x28:
+ 583   3             	        	sendpacket(0x28,eprom(BT_RELOAD));
+ 584   3             	            break;
+ 585   3             	        case 0x29:
+ 586   3             	        	sendpacket(0x29,eprom(BT_MAX));
+ 587   3             	            break;
+ 588   3             	        case 0x2a:
+ 589   3             	        	sendpacket(0x2a,eprom(DELAY_DISCONNECT));
+ 590   3             	            break;
+ 591   3             	        case 0x2b:
+ 592   3             	        	sendpacket(0x2b,eprom(BT_V_MIN));
+ 593   3             	            break;
+ 594   3             	        case 0x2c:
+ 595   3             	        	sendpacket(0x2c,eprom(BT_V_MAX));
+ 596   3             	            break;
+ 597   3             	        case 0x2d:
+ 598   3             	        	sendpacket(0x2d,eprom(CHARGE_AH));
+ 599   3             	            break;
+ 600   3             	        case 0x2e:
+ 601   3             	        	sendpacket(0x2e,eprom(DISCHARGE_AH));
+ 602   3             	            break;
+ 603   3             	        case DATA_INDEX:
+ 604   3             	        	for(value=DATA;value<DATA+32*4;value++){
+ 605   4             	        	    sendpacket(value,eprom(value));
+ 606   4             	                wdg=~wdg;
+ 607   4             	            }
+ 608   3             	            break;
+ 609   3             	        default:sendpacket(0xff,0xff); 
+ 610   3             		}
+ 611   2             	}
+ 612   1             	else{                   //write writeable variable
+ 613   2             		switch(buf[2]){
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 11  
+
+ 614   3             	        case 0x20:
+ 615   3             	        	write_eprom(BOOST,buf[3]*256+buf[4]);
+ 616   3             	        	sendpacket(0x20,eprom(BOOST));	//BOOST
+ 617   3             	            arg();
+ 618   3             	            break;
+ 619   3             	        case 0x21:
+ 620   3             	        	write_eprom(TAPER,buf[3]*256+buf[4]);
+ 621   3             	        	sendpacket(0x21,eprom(TAPER));	//taper
+ 622   3             	            arg();
+ 623   3             	            break;
+ 624   3             	        case 0x22:
+ 625   3             	        	write_eprom(FLOAT_MAX_S,buf[3]*256+buf[4]);
+ 626   3             	        	sendpacket(0x22,eprom(FLOAT_MAX_S));
+ 627   3             	            break;
+ 628   3             	        case 0x23:
+ 629   3             	        	write_eprom(FLOAT_MIN_S,buf[3]*256+buf[4]);
+ 630   3             	        	sendpacket(0x23,eprom(FLOAT_MIN_S));
+ 631   3             	            break;
+ 632   3             	        case 0x24:
+ 633   3             	        	write_eprom(BOOST_BELOW,buf[3]*256+buf[4]);
+ 634   3             	        	sendpacket(0x24,eprom(BOOST_BELOW));
+ 635   3             	            break;
+ 636   3             	        case 0x25:
+ 637   3             	        	write_eprom(COMP_TEMP,buf[3]*256+buf[4]);
+ 638   3             	        	sendpacket(0x25,eprom(COMP_TEMP));
+ 639   3             	            break;
+ 640   3             	        case 0x26:
+ 641   3             	        	write_eprom(DELAY_CHANGE,buf[3]*256+buf[4]);
+ 642   3             	        	sendpacket(0x26,eprom(DELAY_CHANGE));
+ 643   3             	            break;
+ 644   3             	        case 0x27:
+ 645   3             	        	write_eprom(BT_MIN,buf[3]*256+buf[4]);
+ 646   3             	        	sendpacket(0x27,eprom(BT_MIN));
+ 647   3             	            break;
+ 648   3             	        case 0x28:
+ 649   3             	        	write_eprom(BT_RELOAD,buf[3]*256+buf[4]);
+ 650   3             	        	sendpacket(0x28,eprom(BT_RELOAD));
+ 651   3             	            break;
+ 652   3             	        case 0x29:
+ 653   3             	        	write_eprom(BT_MAX,buf[3]*256+buf[4]);
+ 654   3             	        	sendpacket(0x29,eprom(BT_MAX));
+ 655   3             	            break;
+ 656   3             	        case 0x2a:
+ 657   3             	        	write_eprom(DELAY_DISCONNECT,buf[3]*256+buf[4]);
+ 658   3             	        	sendpacket(0x2a,eprom(DELAY_DISCONNECT));
+ 659   3             	            break;
+ 660   3             	     	default:
+ 661   3             	        	write_eprom(buf[2],buf[3]*256+buf[4]);
+ 662   3             	            sendpacket(buf[2],eprom(buf[2]));
+ 663   3             	            break;
+ 664   3             		}
+ 665   2             	}
+ 666   1      		received=0;
+ 667   1          }
+ 668          
+ 669          
+ 670          /*DELAY()
+ 671          {
+ 672              clk=1;
+ 673              clk=0;
+ 674          } */
+ 675            
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 12  
+
+ 676          #define DELAY() clk=1;clk=0;
+ 677          /*----------------------*/
+ 678          /*  EPROM设置及擦除程序 */
+ 679          /*  command=00H,EWDS  */
+ 680          /*  command=01H,EWEN  */
+ 681          /*----------------------*/
+ 682          /*monitor*/ set_eprom(unsigned char command)
+ 683          {
+ 684   1          unsigned char k;
+ 685   1          EA=0;
+ 686   1          cs=clk=di=0;
+ 687   1          Do=1;
+ 688   1          cs=1;
+ 689   1          while(!Do);
+ 690   1          di=1;
+ 691   1          DELAY();
+ 692   1          if(command==0){
+ 693   2                  di=0;
+ 694   2                  DELAY();
+ 695   2                  DELAY();
+ 696   2              }
+ 697   1              else{
+ 698   2                  di=0;
+ 699   2                  DELAY();
+ 700   2                  DELAY();
+ 701   2                  command=0xc0;
+ 702   2              }
+ 703   1          for(k=0;k<8;k++){
+ 704   2              di=command>>7;
+ 705   2              DELAY();
+ 706   2              command<<=1;
+ 707   2          }
+ 708   1          cs=0;
+ 709   1          EA=1;
+ 710   1      }
+ 711          
+ 712          /*--------------------------*/
+ 713          /*  EPROM写入程序           */
+ 714          /*  address<256,写单个数据  */
+ 715          /*--------------------------*/
+ 716          /*monitor*/ write_eprom(unsigned char address,unsigned int Data)
+ 717          {
+ 718   1          unsigned char k;
+ 719   1          set_eprom(EWEN);
+ 720   1          EA=0;
+ 721   1          cs=clk=di=0;
+ 722   1          Do=1;
+ 723   1          cs=1;
+ 724   1          while(!Do);
+ 725   1          di=1;
+ 726   1          DELAY();
+ 727   1          di=0;
+ 728   1          DELAY();
+ 729   1                  di=1;
+ 730   1          DELAY();
+ 731   1          for(k=0;k<8;k++){
+ 732   2              di=address>>7;
+ 733   2              DELAY();
+ 734   2              address<<=1;
+ 735   2          }
+ 736   1          for(k=0;k<16;k++){
+ 737   2              di=Data>>15;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 13  
+
+ 738   2              DELAY();
+ 739   2              Data<<=1;
+ 740   2          }
+ 741   1          cs=0;
+ 742   1          EA=1;
+ 743   1          set_eprom(EWDS);
+ 744   1      }
+ 745          
+ 746          /*------------------*/
+ 747          /*  EPROM读出程序   */
+ 748          /*------------------*/
+ 749          /*monitor*/ unsigned int eprom(unsigned char address)
+ 750          {
+ 751   1          unsigned char k,i;
+ 752   1          unsigned int result;
+ 753   1          EA=0;
+ 754   1          for(i=0;i<10;i++){
+ 755   2              cs=clk=di=0;
+ 756   2              Do=1;
+ 757   2              cs=1;
+ 758   2              while(!Do);
+ 759   2              cs=0;
+ 760   2              cs=1;
+ 761   2              di=1;
+ 762   2              DELAY();
+ 763   2              DELAY();
+ 764   2              di=0;
+ 765   2              DELAY();
+ 766   2              for(k=0;k<8;k++){
+ 767   3                  di=address>>7;
+ 768   3                  DELAY();
+ 769   3                  address<<=1;
+ 770   3              }
+ 771   2              if(Do==0)goto GOOD;
+ 772   2          }
+ 773   1          return 0;
+ 774   1      GOOD:
+ 775   1          for(k=0;k<16;k++){
+ 776   2              result<<=1;
+ 777   2              DELAY();
+ 778   2              result=result|Do;
+ 779   2          }
+ 780   1          cs=0;
+ 781   1          EA=1;
+ 782   1          return result;
+ 783   1      }
+ 784          
+ 785          /*----------------------*/
+ 786          /*  液晶显示驱动程序    */
+ 787          /*  型号:   MDLS-16265B */
+ 788          /*----------------------*/
+ 789          /*----------------------*/
+ 790          /*  液晶显示器判忙程序  */
+ 791          /*----------------------*/
+ 792          
+ 793          /*monitor*/ unsigned char busy()
+ 794          {
+ 795   1          unsigned char ac;
+ 796   1          EA=0;
+ 797   1          P0=0xff;
+ 798   1          RS=0;
+ 799   1          rw=1;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 14  
+
+ 800   1          e=1;
+ 801   1          ac=P0;
+ 802   1          e=0;
+ 803   1          EA=1;
+ 804   1          return ac>>7;
+ 805   1      }
+ 806          
+ 807          /*monitor*/ lcd_opr(unsigned char ch)
+ 808          {
+ 809   1          while(busy());
+ 810   1          EA=0;
+ 811   1          RS=rw=0;
+ 812   1          P0=ch;
+ 813   1          e=1;
+ 814   1          e=0;
+ 815   1          EA=1;
+ 816   1      }
+ 817          
+ 818          /*--------------------------*/
+ 819          /*  液晶显示器初始化程序    */
+ 820          /*--------------------------*/
+ 821          lcd_init(void)
+ 822          {
+ 823   1          /*  工作方式设置,8位数据接口,两行显示,5X7点阵   */
+ 824   1          lcd_opr(0x38);
+ 825   1          /*  输入方式选择,AC自动加1,画面不动 */
+ 826   1          lcd_opr(6);
+ 827   1          /*  显示开关控制,开显示,关光标,禁止闪烁 */
+ 828   1          lcd_opr(12);
+ 829   1          lcd_opr(1);
+ 830   1      }
+ 831          
+ 832          
+ 833          /*------------------------------*/
+ 834          /*  单字符显示,供printf()调用   */
+ 835          /*------------------------------*/
+ 836          /*monitor*/ aputchar(unsigned char c)  reentrant
+ 837          {
+ 838   1      //    if(OutDevice==LCD){
+ 839   1              while(busy());
+ 840   1      //        EA=0;
+ 841   1              RS=rw=0;
+ 842   1              switch(c){
+ 843   2                  case '\n':P0=0xc0;break;
+ 844   2                  case '\b':P0=2;break;
+ 845   2                  case '\a':P0=1;break;
+ 846   2                  default:RS=1;P0=c;
+ 847   2              }
+ 848   1              e=1;
+ 849   1              e=0;
+ 850   1        //      EA=1;
+ 851   1      //    }
+ 852   1      //    else{
+ 853   1      //       while(usy){
+ 854   1      //            OutDevice=LCD;
+ 855   1      //            aprintf("\aPRINTER NOT\n READY...");
+ 856   1      //            if(key()==CANCEL)return 1;
+ 857   1      //            OutDevice=PRINTER;
+ 858   1      //        }
+ 859   1      //        EA=0;
+ 860   1      //       P0=c;
+ 861   1      //       stb=0;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 15  
+
+ 862   1      //       stb=1;
+ 863   1      //       EA=1;
+ 864   1      //       if(c=='\n')aputchar('\r');
+ 865   1      //    }
+ 866   1          return 0;
+ 867   1      }
+ 868          
+ 869          /*------------------*/
+ 870          /*  格式化输出命令  */
+ 871          /*------------------*/
+ 872          /*monitor*/ aprintf (char *format,...) reentrant
+ 873          {
+ 874   1          unsigned char format_flag,*ptr;                               /*格式标志*/
+ 875   1          unsigned int div_val, u_val, base;
+ 876   1          va_list ap;
+ 877   1          va_start(ap,format);
+ 878   1      //    EA=0;
+ 879   1          for (;;){
+ 880   2              while ((format_flag = *format++) != '%'){      /* Until '%' or '\0' */
+ 881   3                  if (!format_flag){
+ 882   4      //                EA=1;
+ 883   4                      return (1);
+ 884   4                  }
+ 885   3                  if(aputchar (format_flag))return 1;
+ 886   3              }
+ 887   2              switch (format_flag = *format++){
+ 888   3                  case 'c':
+ 889   3                      format_flag = va_arg(ap,char);
+ 890   3                  default:
+ 891   3                      if(aputchar (format_flag))return 1;
+ 892   3                  continue;
+ 893   3                  case 's':
+ 894   3                      ptr = va_arg(ap,char *);
+ 895   3                  while (format_flag = *ptr++){
+ 896   4                      if(aputchar (format_flag))return 1;
+ 897   4                  }
+ 898   3                  continue;
+ 899   3                  case 'e':
+ 900   3                      base=10;
+ 901   3                      div_val=100;
+ 902   3                      u_val=va_arg(ap,unsigned char);
+ 903   3                      while(div_val>1&& div_val >u_val){
+ 904   4                          div_val/=10;
+ 905   4                      }
+ 906   3                      do{
+ 907   4                          aputchar(u_val/div_val+48);
+ 908   4                          u_val%=div_val;
+ 909   4                          div_val/=base;
+ 910   4                      }while(div_val);
+ 911   3                      continue;
+ 912   3                  case 'o':
+ 913   3                  case 'd':
+ 914   3                      base = 10;
+ 915   3                      div_val = 10000;
+ 916   3                  u_val = va_arg(ap,int);
+ 917   3                      while (div_val > 1 && div_val > u_val){
+ 918   4                          div_val /= 10;
+ 919   4                      }
+ 920   3                      if(format_flag=='o' && div_val==1)aputchar('0');
+ 921   3                  do{
+ 922   4                      if(format_flag=='o' && div_val==1)aputchar('.');
+ 923   4                      aputchar (u_val / div_val+48);
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 16  
+
+ 924   4                      u_val %= div_val;
+ 925   4                      div_val /= base;
+ 926   4                  }
+ 927   3                  while (div_val);
+ 928   3              }
+ 929   2          }
+ 930   1      }
+ 931          
+ 932          delay(unsigned int time)
+ 933          {
+ 934   1          unsigned char j;
+ 935   1          for(;time>0;time--)for(j=0;j<DELAY_SCALE;j++)wdg=~wdg;
+ 936   1      }
+ 937          
+ 938          unsigned char key()
+ 939          {
+ 940   1      //#pragma memory=code
+ 941   1      //    code unsigned char key_tab[16]={112,115,114,113,
+ 942   1      //                        179,178,177,211,
+ 943   1      //                        210,209,227,176,
+ 944   1      //                        208,226,225,224};
+ 945   1      //    code unsigned char key_tab[16]={227,211,179,115,//115,114,113,112,
+ 946   1      //    								226,210,178,114,//179,178,177,176,
+ 947   1      //       					            225,209,177,113,//211,210,209,208,
+ 948   1      //       		            			224,208,176,112};//227,226,225,224};
+ 949   1      //    code unsigned char key_tab[16]={112,176,208,224,
+ 950   1      //                        113,177,209,225,
+ 951   1      //                        114,178,210,226,
+ 952   1      //                        115,179,211,227};
+ 953   1          code unsigned char key_tab[16]={224,208,176,112,
+ 954   1                              225,209,177,113,
+ 955   1                              226,210,178,114,
+ 956   1                              227,211,179,115};
+ 957   1      
+ 958   1      //#pragma memory=default
+ 959   1          unsigned char j,k;
+ 960   1          wdg=~wdg;
+ 961   1          for(j=0;j<4;j++){
+ 962   2              P1=~(1<<j);
+ 963   2              k=P1|0xf;
+ 964   2              if(k!=0xff){
+ 965   3                  delay(20);
+ 966   3                  if(k==P1|0xf)k=(k&0xf0)+j;
+ 967   3                  break;
+ 968   3              }
+ 969   2          }
+ 970   1          P1=0xff;
+ 971   1          for(j=0;j<16;j++){
+ 972   2              if(key_tab[j]==k){
+ 973   3                  k=j;
+ 974   3                  time=0;
+ 975   3                  return k;
+ 976   3              }
+ 977   2          }
+ 978   1          if(display_pb==0){
+ 979   2          	time=0;
+ 980   2          	return 1;
+ 981   2          }
+ 982   1          return NO;
+ 983   1      }
+ 984          
+ 985          unsigned char wait_key()
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 17  
+
+ 986          {
+ 987   1          unsigned char k;
+ 988   1          while(key()!=NO&&time<WAITTIME);
+ 989   1          while((k=key())==NO && time<WAITTIME);
+ 990   1      	return k;
+ 991   1      }	
+ 992          	
+ 993          unsigned int ascanf(char *format,unsigned char lenth)
+ 994          {
+ 995   1          unsigned char k,i;
+ 996   1          i=0;
+ 997   1          for(;;){
+ 998   2              k=wait_key();
+ 999   2                  if(k== OK)return 1;
+1000   2                  if(k== CANCEL && i>0){
+1001   3                      i--;
+1002   3                      format[i]=0;
+1003   3                  }
+1004   2                  if(k<10){
+1005   3                      if(i<(lenth)){
+1006   4                          format[i]=k+48;
+1007   4                          i++;
+1008   4                          for(k=i;k<lenth;k++)format[k]=0;
+1009   4                      }
+1010   3                  }
+1011   2              aprintf("\n%s            ",format);
+1012   2          }
+1013   1      }
+1014          
+1015          unsigned int setup(char *message,int a,int max,int min)
+1016          {
+1017   1          unsigned char k;
+1018   1      loop:
+1019   1              lcd_opr(1);
+1020   1              aprintf(message,a);
+1021   1          if((k=wait_key())==NO)return 0xffff;
+1022   1                  if(k== OK)return a;
+1023   1                  if(k== INC){
+1024   2                      if(a<max)a++;
+1025   2                      aprintf(message,a);
+1026   2                      while(key()==INC){
+1027   3                          delay(500);
+1028   3                          while(key()==INC){
+1029   4                              if(a<max)a++;
+1030   4                              aprintf(message,a);
+1031   4                              delay(200);
+1032   4                          }
+1033   3                      }
+1034   2                  }
+1035   1                  if(k== DEC){
+1036   2                      if(a>min)a--;
+1037   2                      aprintf(message,a);
+1038   2                      while(key()==DEC){
+1039   3                          delay(500);
+1040   3                          while(key()==DEC){
+1041   4                              if(a>min)a--;
+1042   4                              aprintf(message,a);
+1043   4                              delay(200);
+1044   4                          }
+1045   3                      }
+1046   2              }
+1047   1          goto loop;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 18  
+
+1048   1      }
+1049          
+1050          char password()
+1051          {
+1052   1          unsigned char pass[4],i;
+1053   1          for(i=0;i<4;i++)pass[i]=0;
+1054   1          aprintf("\aEnter Password:");
+1055   1          ascanf(pass,3);
+1056   1          for(i=0;i<3;i++){
+1057   2              if(pass[i]!=eprom(PASSWORD+i)){
+1058   3                  aprintf("\bPassword Error!");
+1059   3                  wait_key();
+1060   3                  aprintf("\a");
+1061   3                  return 0;
+1062   3              }
+1063   2          }
+1064   1          return 1;
+1065   1      }
+1066          
+1067          control_set()
+1068          {
+1069   1          unsigned char k;
+1070   1      //    #pragma memory=code
+1071   1          code unsigned char *prompt[]={"\bMAXIMUM BOOST\nVOLTAGE %oV ",
+1072   1                          "\bBOOST TAPER AT\nVOLTAGE %oV ",
+1073   1                          "\bFLOAT MAXIMUM\nVOLTAGE %oV ",
+1074   1                          "\bFLOAT MINIMUM\nVOLTAGE %oV ",
+1075   1                          "\bRETURN TO BOOST\nMODE BELOW %oV ",
+1076   1                          "\bTEMPERATURE COMP\nAT -%dmV/逤/CELL ",
+1077   1                          "\bSTATE CHANGE\nDELAY %d S  "
+1078   1                      };
+1079   1          code unsigned int MAX[]={BOOST_MAX,TAPER_MAX,FLOAT_MAX,FLOAT_MAX,BOOST_BELOW_MAX,COMP_TEMP_MAX,DELAY_C
+             -HANGE_MAX};
+1080   1          code unsigned int MIN[]={BOOST_MIN,TAPER_MIN,FLOAT_MIN,FLOAT_MIN,BOOST_BELOW_MIN,COMP_TEMP_MIN,DELAY_C
+             -HANGE_MIN};
+1081   1      //    #pragma memory=default
+1082   1          unsigned int temp[7];
+1083   1          if(!password())return 0;
+1084   1          for(k=0;k<7;k++)
+1085   1              if((temp[k]=setup(prompt[k],eprom(BOOST+k),MAX[k],MIN[k]))==0xffff)return 0;
+1086   1          aprintf("\aSAVE CHANGE?\nINC=YES OTHER=NO");
+1087   1          if(wait_key()==INC){
+1088   2              for(k=0;k<7;k++)write_eprom(BOOST+k,temp[k]);
+1089   2              arg();
+1090   2          }
+1091   1          lcd_opr(1);
+1092   1      }
+1093          
+1094          load_setup()
+1095          {
+1096   1          unsigned char k;
+1097   1      //    #pragma memory=code
+1098   1          code unsigned char *prompt[]={
+1099   1              "\bLOW BATTERY AL-\nARM ON AT %oV ",
+1100   1              "\bRECONNECT LOAD\nABOVE %oV ",
+1101   1              "\bHIGH BATTERY AL-\nARM ON AT %oV ",
+1102   1              "\bDELAY BEFORE\nDISCONNECT %d S  "
+1103   1          };
+1104   1          code unsigned int MAX[]={BT_MIN_MAX,BT_RELOAD_MAX,BT_MAX_MAX,DELAY_DIS_MAX};
+1105   1          code unsigned int MIN[]={BT_MIN_MIN,BT_RELOAD_MIN,BT_MAX_MIN,DELAY_DIS_MIN};
+1106   1      //    #pragma memory=default
+1107   1          unsigned int temp[4];
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 19  
+
+1108   1          if(!password())return 0;
+1109   1          for(k=0;k<4;k++)
+1110   1              if((temp[k]=setup(prompt[k],eprom(BT_MIN+k),MAX[k],MIN[k]))==0xffff)return 0;
+1111   1          aprintf("\aSAVE CHANGE?\nINC=YES OTHER=NO");
+1112   1          if(wait_key()==INC){
+1113   2              set_eprom(EWEN);
+1114   2              for(k=0;k<4;k++)
+1115   2                  write_eprom(BT_MIN+k,temp[k]);
+1116   2              set_eprom(EWDS);
+1117   2              arg();
+1118   2          }
+1119   1          lcd_opr(1);
+1120   1      }
+1121          
+1122          
+1123          remote_set()
+1124          {
+1125   1      //    #pragma memory=code
+1126   1      //    code unsigned char *prompt[]={"OFF","ON"};
+1127   1      //    #pragma memory=default
+1128   1          unsigned char /*Phone[1],*/Local/*,Up_hour,Up_min*/;
+1129   1          bit Upload=1;
+1130   1      //    unsigned char k;
+1131   1          if(!password())return 0;
+1132   1      /*    Upload=eprom(AUTO_UPLOAD);*/
+1133   1          Local=eprom(LOCAL);
+1134   1      /*    for(k=0;k<12;k++)Phone[k]=eprom(PHONE+k);
+1135   1          Phone[12]=0;*/
+1136   1      /*    while(1){
+1137   1              k=Upload;
+1138   1              aprintf("\aAuto Upload:\n[%s] ",prompt[k]);
+1139   1              k=wait_key();
+1140   1              if(k==NO)return 0;
+1141   1              if(k==DEC || k==INC)Upload=~Upload;
+1142   1              if(k==OK)break;
+1143   1          }*/
+1144   1      /*    if(Upload){*/
+1145   1              if((Local=setup("\bSit Number:\n%d  ",eprom(LOCAL),255,0))==0xffff)return 0;
+1146   1      /*        if((Up_hour=setup("\bUpload Hour:\n%d ",eprom(UP_HOUR),23,0))==0xffff)return 0;
+1147   1              if((Up_min =setup("\bUpload Minute:\n%d ",eprom(UP_MIN),59,0))==0xffff)return 0;
+1148   1              aprintf("\aRemote Phone:\n%s",Phone);
+1149   1              if(!ascanf(Phone,12))return 0;
+1150   1          }*/
+1151   1          aprintf("\aSAVE CHANGE?\nINC=YES OTHER=NO");
+1152   1          if(wait_key()==INC){
+1153   2              set_eprom(EWEN);
+1154   2      /*        write_eprom(AUTO_UPLOAD,Upload);*/
+1155   2              write_eprom(LOCAL,Local);
+1156   2      /*        for(k=0;k<12;k++)write_eprom(PHONE+k,Phone[k]);
+1157   2              write_eprom(UP_HOUR,Up_hour);
+1158   2              write_eprom(UP_MIN,Up_min);*/
+1159   2              set_eprom(EWDS);
+1160   2              arg();
+1161   2          }
+1162   1          lcd_opr(1);
+1163   1      }
+1164          
+1165          
+1166          char state(unsigned char a)
+1167          {
+1168   1          return ((portb>>a)&1)?'0':'1';
+1169   1      }
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 20  
+
+1170          
+1171          solar()
+1172          {
+1173   1      //    #pragma memory=code
+1174   1          code char *prompt[]={"OFF","ON"};
+1175   1      //    #pragma memory=default
+1176   1          unsigned char bank=0;
+1177   1          bit change=1;
+1178   1          lcd_opr(1);
+1179   1          IsSolar=1;
+1180   1          while(1){
+1181   2          	if(change){
+1182   3          	 	aprintf("\bBANK%e %oVoc   ",bank+1,rad_get(SR_V0+bank));
+1183   3            		change=0;
+1184   3             	}
+1185   2              aprintf("\n[%s]     %oA  ",prompt[state(bank)-'0'],rad_get(SR_I0+bank));
+1186   2              delay(200);
+1187   2              switch(key()){
+1188   3                  case INC:bank=(bank+1)%6;change=1;break;
+1189   3                  case DEC:if(bank==0)bank=5;else bank--;change=1;break;
+1190   3                  case SOLAR:change=1;
+1191   3                  case NO:break;
+1192   3                  default:IsSolar=0;lcd_opr(1);return 0;
+1193   3              }
+1194   2              if(time>WAITTIME){
+1195   3                      lcd_opr(1);
+1196   3                      IsSolar=0;
+1197   3                      return 0;
+1198   3              }
+1199   2          }
+1200   1      }
+1201          
+1202          view()
+1203          {
+1204   1          unsigned char k,address;
+1205   1          unsigned char i;
+1206   1          i=k=0;
+1207   1          for(;;){
+1208   2              address=i*4+DATA;
+1209   2              aprintf("\aD%e H:%o L:%oV",i,eprom(address),eprom(address+1));
+1210   2              aprintf("\nC:%d D:%d",eprom(address+2),eprom(address+3));
+1211   2              switch(wait_key()){
+1212   3                  case INC:i=(i+1)%32;break;
+1213   3                  case DEC:if(i==0)i=31;else i--;break;
+1214   3                  default:lcd_opr(1);return 0;
+1215   3              }
+1216   2           }
+1217   1      }
+1218          
+1219          testself()
+1220          {
+1221   1      //    #pragma memory=code
+1222   1          code char *prompt[]={
+1223   1              "Test Mode",
+1224   1              "Meter Adjust"
+1225   1          };
+1226   1      //    #pragma memory=default
+1227   1          
+1228   1          unsigned char k=0,l;
+1229   1          unsigned char i=0;
+1230   1          while(k!=OK){
+1231   2              aprintf("\a%s ",prompt[i]);
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 21  
+
+1232   2              k=wait_key();
+1233   2              if(k==0xff || k==CANCEL)return 0;
+1234   2              if(k==INC || k==DEC)if(i==0)i=1;else i=0;
+1235   2          }
+1236   1          if(i==0){
+1237   2              TEST=1;
+1238   2              while(time<60 && key()!=CANCEL){
+1239   3                  aprintf("\bTEST A:%e",solar_state);
+1240   3                  aprintf(" %c",state(0));
+1241   3                  aprintf("%c",state(1));
+1242   3                  aprintf("%c" ,state(2));
+1243   3                  aprintf("%c",state(3));
+1244   3                  aprintf("%c",state(4));
+1245   3                  aprintf("%c  ",state(5));
+1246   3                  aprintf("\nB: %oV T:%d ",btv,rad_get(TEMP_BT)+20);
+1247   3                  delay(500);
+1248   3              }
+1249   2              Delay_change=eprom(DELAY_CHANGE);
+1250   2              Delay_disconnect=eprom(DELAY_DISCONNECT);
+1251   2              TEST=0;
+1252   2          }
+1253   1          else{
+1254   2              for(i=0;i<16;i++){
+1255   3                  k=NO;
+1256   3                  l=eprom(CLIP+i);
+1257   3                  while(k!=OK){
+1258   4                      aprintf("\aIN %e\n%e  ",i,l);
+1259   4                      k=wait_key();
+1260   4                      if(k==NO || k==CANCEL)return 0;
+1261   4                      if(k==INC)l++;
+1262   4                      if(k==DEC)l--;
+1263   4                  }
+1264   3                  write_eprom(CLIP+i,l);
+1265   3                  lcd_opr(1);
+1266   3              }
+1267   2          }
+1268   1      /*    else{
+1269   1              set_eprom(EWEN);
+1270   1              for(i=0;i<256;i++){
+1271   1                  tmp=eprom(i);
+1272   1                  write_eprom(i,0);
+1273   1                  if(eprom(i)!=0)goto ERR;
+1274   1                  write_eprom(i,0xff);
+1275   1                  if(eprom(i)!=0xff)goto ERR;
+1276   1                  write_eprom(i,tmp);
+1277   1                  if(eprom(i)!=tmp)goto ERR;
+1278   1              }
+1279   1              aprintf("\bEEPROM TEST OK!");
+1280   1              while(wait_key()!=OK);
+1281   1              goto next;
+1282   1      ERR:
+1283   1              aprintf("\bEEPROM TEST \nFAILED!");
+1284   1              while(wait_key()!=OK);
+1285   1              return 0;
+1286   1      next:
+1287   1              for(i=0;i<6;i++){
+1288   1                  EA=0;
+1289   1                  portb=1<<i;
+1290   1                  P0=portb;
+1291   1                  pben=1;
+1292   1                  pben=0;
+1293   1                  while(key()!=CANCEL)aprintf("\bTEST B:  BANK%d\n  %oA  ",i,ad_get(BT_I));
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 22  
+
+1294   1              }
+1295   1              EA=1;
+1296   1          }*/
+1297   1          lcd_opr(1);
+1298   1      }
+1299          
+1300          
+1301          save()
+1302          {
+1303   1          char i;
+1304   1          set_eprom(EWEN);
+1305   1          for(i=30;i>=0;i--){
+1306   2              write_eprom(DATA+(i+1)*4,eprom(DATA+i*4));
+1307   2              write_eprom(DATA+(i+1)*4+1,eprom(DATA+i*4+1));
+1308   2              write_eprom(DATA+(i+1)*4+2,eprom(DATA+i*4+2));
+1309   2              write_eprom(DATA+(i+1)*4+3,eprom(DATA+i*4+3));
+1310   2          }
+1311   1          write_eprom(DATA,0);
+1312   1          write_eprom(DATA+1,10000);
+1313   1          write_eprom(DATA+2,0);
+1314   1          write_eprom(DATA+3,0);
+1315   1          set_eprom(EWDS);
+1316   1          chargeah=dischargeah=0;
+1317   1          sendstr("AT&FE0V0X0S0=1\r");
+1318   1      }
+1319          
+1320          
+1321          void outchar(char cc)
+1322          {
+1323   1      	unsigned char i;
+1324   1      	for(i=0;i<8;i++){
+1325   2        		cc=cc>>1;
+1326   2       		if(CY)dta=0;
+1327   2        		else dta=1;
+1328   2        		slk=1;
+1329   2        		slk=0;
+1330   2      		slk=0;
+1331   2      		slk=0;
+1332   2      		slk=0;
+1333   2        		slk=1;
+1334   2        	}
+1335   1      }
+1336          
+1337          main()
+1338          {
+1339   1      //    unsigned int tt;
+1340   1          init();
+1341   1          chargeah=dischargeah=0;
+1342   1      //    set_eprom(EWEN);
+1343   1          write_eprom(DATA,0);
+1344   1          write_eprom(DATA+1,10000);
+1345   1      //    set_eprom(EWDS);
+1346   1          TEST=0;
+1347   1          sendstr("AT&FE0V0&K0X0S0=1\r");
+1348   1          goto start;
+1349   1          while(1){
+1350   2              if(key()!=NO){
+1351   3      start:
+1352   3                  lcd_init();
+1353   3                  porta|=LAMP;
+1354   3                  P0=porta;
+1355   3                  paen=1;
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 23  
+
+1356   3                  paen=0;
+1357   3                  DISPLAY=1;
+1358   3                  while(time<WAITTIME){
+1359   4                      aprintf("\bBATTERY VOLTAGE\n          %oV ",btv);
+1360   4                      switch(key()){
+1361   5                          case BT_V_KEY:{
+1362   6                              while(key()==BT_V_KEY);
+1363   6                              aprintf("\a");
+1364   6                              while(key()==NO&&time<WAITTIME){
+1365   7                                  aprintf("\bBATTERY VOLTAGE\n          %oV ",btv);
+1366   7                                  delay(500);
+1367   7                              }
+1368   6                              lcd_opr(1);
+1369   6                              break;
+1370   6                          }
+1371   5                          case BT_I_KEY:{
+1372   6                              while(key()==BT_I_KEY);
+1373   6                              aprintf("\a");
+1374   6                              while(key()==NO&&time<WAITTIME){
+1375   7                                  aprintf("\bCHARGE CURRENT\n          %oA ",rad_get(BT_I));
+1376   7                                  delay(500);
+1377   7                              }
+1378   6                              lcd_opr(1);
+1379   6                              break;
+1380   6                          }
+1381   5                          case LOAD_V_KEY:{
+1382   6                              while(key()==LOAD_V_KEY);
+1383   6                              aprintf("\a");
+1384   6                              while(key()==NO&&time<WAITTIME){
+1385   7                                  aprintf("\bLOAD VOLTAGE\n          %oV ",rad_get(LOAD_V));
+1386   7                                  delay(500);
+1387   7                              }
+1388   6                              lcd_opr(1);
+1389   6                              break;
+1390   6                          }
+1391   5                          case LOAD_I_KEY:{
+1392   6                              while(key()==LOAD_I_KEY);
+1393   6                              aprintf("\a");
+1394   6                              while(key()==NO&&time<WAITTIME){
+1395   7                                  aprintf("\bLOAD CURRENT\n          %oA ",rad_get(LOAD_I));
+1396   7                                  delay(500);
+1397   7                              }
+1398   6                              lcd_opr(1);
+1399   6                              break;
+1400   6                          }
+1401   5                          case SOLAR:solar();break;
+1402   5                          case CONTROL_SET:control_set();break;
+1403   5                          case TESTSELF:testself();break;
+1404   5                          case REMOTE_SET:remote_set();break;
+1405   5                          case LOAD_SET:load_setup();break;
+1406   5                          case VIEW:view();break;
+1407   5       //                   case F1:ToPrinter();aprintf("\a");break;
+1408   5       //                   case F2:graph();aprintf("\a");
+1409   5                      }
+1410   4      //	        if(recviced()){
+1411   4      //                tt=getb();
+1412   4      //                if(/*tt==local||*/tt==0xff){
+1413   4      //                	send('K');
+1414   4      //                    aprintf("\aRemote Connect!");
+1415   4      //	                talk();
+1416   4      //	            }
+1417   4      //	        }
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 24  
+
+1418   4                  }
+1419   3                  lcd_opr(8);
+1420   3                  porta&=~LAMP;
+1421   3                  P0=porta;
+1422   3                  DISPLAY=0;
+1423   3                  paen=1;
+1424   3                  paen=0;
+1425   3                  outchar(0xff);
+1426   3                  outchar(0xff);
+1427   3                  outchar(0xff);
+1428   3                  outchar(0xff);
+1429   3                  outchar(0xff);
+1430   3                  outchar(0xff);
+1431   3                  outchar(0xff);
+1432   3                  outchar(0xff);
+1433   3                  outchar(0xff);
+1434   3                  outchar(0xff);
+1435   3                  outchar(0xff);
+1436   3                  outchar(0xff);
+1437   3              }
+1438   2      /*        if(up_load && hour==eprom(UP_HOUR) && min>=eprom(UP_MIN)){
+1439   2                  if(dial()==1){
+1440   2                      talk();
+1441   2                      up_load=0;
+1442   2                  }
+1443   2              }*/
+1444   2      //        if(recviced()){
+1445   2      //            tt=getb();
+1446   2      //            if(/*tt==local||*/tt==0xff){
+1447   2      //            	send('K');
+1448   2      //            	port|=LAMP;
+1449   2      //            	P0=port;
+1450   2      //            	port_out_en=1;
+1451   2      //            	port_out_en=0;
+1452   2      //            	lcd_init();
+1453   2      //                aprintf("\bRemote Connect!");
+1454   2      //                talk();
+1455   2      //                port&=~LAMP;
+1456   2      //            	P0=port;
+1457   2      //            	port_out_en=1;
+1458   2      //            	port_out_en=0;
+1459   2      //            	lcd_opr(8);
+1460   2      //            }
+1461   2      //        }
+1462   2              if(newday){
+1463   3                  save();
+1464   3                  newday=0;
+1465   3              }
+1466   2          }
+1467   1      }
+1468          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   6642    ----
+   CONSTANT SIZE    =    911    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     26      79
+   IDATA SIZE       =      6    ----
+   BIT SIZE         =      7       2
+END OF MODULE INFORMATION.
+
+C51 COMPILER V6.10  JKZK                                                                   04/06/2001 23:38:50 PAGE 25  
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

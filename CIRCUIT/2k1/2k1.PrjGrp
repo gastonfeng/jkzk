@@ -1,0 +1,6 @@
+[ProjectGroup]
+Version=1.0
+[Project1]
+ProjectPath=..\..\..\..\my_lib\proteldxp.LIBPKG
+[Project2]
+ProjectPath=2k1.PRJPCB

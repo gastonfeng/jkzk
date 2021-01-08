@@ -1,0 +1,200 @@
+
+[InstallShield Wizard]
+iDate=2
+iTime=1
+Flag=0
+ISX.EXE Size=630784
+ISX.EXE Date=12:43:52  1998-2-24
+ISX.EXE Ver=2.0.0.143
+SETUP.EXE Size=45312
+SETUP.EXE Date=11:53:32  1997-1-18
+SETUP.EXE Ver=3.0.111.0
+SETUP.INS Size=70160
+SETUP.INS Date=15:16:56  1998-2-11
+SETUP.INS Ver=Not available
+_INST16.EX_ Size=70160
+_INST16.EX_ Date=15:16:56  1998-2-11
+_INST16.EX_ Ver=Not available
+_INST32I.EX_ Size=320411
+_INST32I.EX_ Date=12:04:08  1997-1-18
+_INST32I.EX_ Ver=Not available
+ISDEPEND.INI Size=5492
+ISDEPEND.INI Date=19:05:06  1998-5-21
+ISDEPEND.INI Ver=Not available
+SWDEPEND.INI Size=10290
+SWDEPEND.INI Date=20:21:02  1998-5-21
+SWDEPEND.INI Ver=Not available
+ICOMP.EXE Size=119808
+ICOMP.EXE Date=16:05:10  1996-1-15
+ICOMP.EXE Ver=3.00.062
+SPLIT.EXE Size=90624
+SPLIT.EXE Date=16:09:36  1996-1-15
+SPLIT.EXE Ver=3.00.060
+PACKLIST.EXE Size=87552
+PACKLIST.EXE Date=16:10:30  1996-1-15
+PACKLIST.EXE Ver=3.00.060
+Version=2.02
+DevTool=for Delphi
+Platform=Win32
+DisksBuilt=1
+DisksDir=SPS2000E\650MB\
+TabsVisit=11111111100001111
+LangNum=0
+LangDir=
+
+[VisualDesign]
+AppName=SOLAR CHARGER
+AppExe=[Program Files]\sps2001.exe
+AppExeFile=D:\product\jkzk\sps2001\sps2001.exe
+Version=1.0
+Company=studio
+Title=sps2001
+TitleType=1
+BackgrndBmp=
+BackgrndAlign=4
+Backgrnd=1
+BackgrndColor=10
+Uninstall=1
+Silent=1
+SmsMode=0
+
+[Types]
+Types=1
+Type1Components=1
+Type1Name=Complete
+Type1ComponentList=1 
+
+[Components]
+Components=1
+Component1Groups=1
+Component1Name=Application Files
+Component1Description=Application files needed to run the application
+Component1GroupList=1 
+
+[Groups]
+Groups=1
+Group1Size=2418914
+Group1Files=5
+Group1Name=Program Files
+Group1Dir=<INSTALLDIR>
+Group1Update=2
+Group1TargetOS=-1
+Group1File1=D:\product\jkzk\sps2001\variable.ini
+Group1File2=D:\product\jkzk\sps2001\sps.ini
+Group1File3=D:\product\jkzk\sps2001\sps2001.eng
+Group1File4=D:\product\jkzk\sps2001\evariable.ini
+Group1File5=D:\product\jkzk\sps2001\English\sps2001.exe
+
+[Sequence]
+DestinationLocationDir=<ProgramFilesDir>\SOLAR CHARGER\
+SelectProgramFolderName=sps2001
+WelcomeMessage=1
+WelcomeMessageFile=
+SelectProgramFolder=1
+BeginFileTransfer=1
+ProgressBar=1
+SetupComplete=1
+SetupCompleteExec=[Program Files]\sps2001.exe
+SetupCompleteExecParam=
+SetupCompleteExecReadme=
+
+[RegEntries]
+Reg1Path=HKEY_CLASSES_ROOT
+Reg1Val1Type=0
+Reg1Val1Name=(Default)
+Reg1Val1Data=(value not set)
+Reg1Vals=1
+Reg2Path=HKEY_CURRENT_USER
+Reg2Val1Type=0
+Reg2Val1Name=(Default)
+Reg2Val1Data=(value not set)
+Reg2Vals=1
+Reg3Path=HKEY_LOCAL_MACHINE
+Reg3Val1Type=0
+Reg3Val1Name=(Default)
+Reg3Val1Data=(value not set)
+Reg3Vals=1
+Reg4Path=HKEY_USERS
+Reg4Val1Type=0
+Reg4Val1Name=(Default)
+Reg4Val1Data=(value not set)
+Reg4Vals=1
+Reg5Path=HKEY_CURRENT_CONFIG
+Reg5Val1Type=0
+Reg5Val1Name=(Default)
+Reg5Val1Data=(value not set)
+Reg5Vals=1
+Reg6Path=HKEY_DYN_DATA
+Reg6Val1Type=0
+Reg6Val1Name=(Default)
+Reg6Val1Data=(value not set)
+Reg6Vals=1
+Reg7Path=HKEY_CURRENT_USER\Software
+Reg7Val1Type=0
+Reg7Val1Name=(Default)
+Reg7Val1Data=(value not set)
+Reg7Vals=1
+Reg8Path=HKEY_CURRENT_USER\Software\Borland
+Reg8Val1Type=0
+Reg8Val1Name=(Default)
+Reg8Val1Data=(value not set)
+Reg8Vals=1
+Reg9Path=HKEY_CURRENT_USER\Software\Borland\Locales
+Reg9PathUninstall=1
+Reg9Val1Type=0
+Reg9Val1Name=(Default)
+Reg9Val1Data=(value not set)
+Reg9Val2Type=0
+Reg9Val2Name=C:\program files\SOLAR CHARGER\sps2001.exe
+Reg9Val2Data=eng
+Reg9Vals=2
+Regs=9
+
+[Registry]
+Reg1Path=HKEY_CURRENT_USER\Software
+Reg2Path=HKEY_CURRENT_USER\Software\Borland
+Reg3Path=HKEY_CURRENT_USER\Software\Borland\Locales
+Reg3PathUninstall=1
+Reg4Path=HKEY_CURRENT_USER\Software\Borland\Locales
+Reg4PathUninstall=1
+Reg4ValName=C:\program files\SOLAR CHARGER\sps2001.exe
+Reg4ValType=0
+Reg4ValData=eng
+Regs=4
+
+[Icons]
+Icons=2
+Icon1Param=
+Icon1Cmd=[Program Files]\sps2001.exe
+Icon1Description=sps2001
+Icon1WorkingDir=[Program Files]
+Icon1IconFile=
+Icon1RealFile=D:\product\jkzk\sps2001\sps2001.exe
+Icon1WhichIcon=0
+Icon1KeyVirtual=0
+Icon1KeyFlags=0
+Icon1StartMenu=3
+Icon1Window=0
+Icon2Param=
+Icon2Cmd=[Program Files]\sps2001.exe
+Icon2Description=sps2001
+Icon2WorkingDir=[Program Files]
+Icon2IconFile=
+Icon2RealFile=D:\product\jkzk\sps2001\sps2001.exe
+Icon2WhichIcon=0
+Icon2KeyVirtual=0
+Icon2KeyFlags=0
+Icon2StartMenu=0
+Icon2Window=0
+
+[Autoexec]
+PathDir=
+ShareLocks=
+ShareFiles=
+Command=
+
+[CopyToFloppy]
+DriveOption=
+DestinationPath=
+DestinationPathOneFile=
+Password=

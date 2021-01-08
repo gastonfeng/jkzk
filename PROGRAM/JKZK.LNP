@@ -1,0 +1,4 @@
+"Sbuf.obj",
+"Jkzk.obj" 
+TO "jkzk" REGFILE (.\jkzk.ORC) 
+RAMSIZE(256) 

@@ -1,0 +1,5 @@
+"Jkzk.obj",
+"Sbuf.obj" 
+TO "jkzk" 
+RAMSIZE(256) 
+CODE( 0X0000-0X4FFF )

@@ -1,0 +1,415 @@
+BL51 BANKED LINKER/LOCATER V4.03                                                        04/06/2001  23:39:01  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V4.03, INVOKED BY:
+C:\KEIL\C51\BIN\BL51.EXE Sbuf.obj, Jkzk.obj TO jkzk REGFILE (.\JKZK.ORC) RAMSIZE (256)
+
+
+MEMORY MODEL: SMALL
+
+
+INPUT MODULES INCLUDED:
+  Sbuf.obj (SBUF)
+  Jkzk.obj (JKZK)
+  C:\KEIL\C51\LIB\C51S.LIB (?C_STARTUP)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?CLDPTR)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?CSTOPTR)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?IMUL)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?UIDIV)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?SIDIV)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?ILDPTR)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?ULDIV)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?OFFXADD)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?PLDPTR)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?CCASE)
+  C:\KEIL\C51\LIB\C51S.LIB (?C_IBP)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?PLDIDATA)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?PLDXDATA)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?PLDPDATA)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?PLDCODE)
+
+
+LINK MAP OF MODULE:  jkzk (SBUF)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+            REG     0008H     0008H     ABSOLUTE     "REG BANK 1"
+            DATA    0010H     0001H     UNIT         ?C?LIB_DATA
+            IDATA   0011H     0006H     UNIT         ?ID?JKZK
+                    0017H     0009H                  *** GAP ***
+            BIT     0020H.0   0000H.7   UNIT         ?BI?JKZK
+            BIT     0020H.7   0000H.1   UNIT         ?BI?SBUF
+            BIT     0021H.0   0000H.1   UNIT         _BIT_GROUP_
+                    0021H.1   0000H.7                *** GAP ***
+            DATA    0022H     0031H     UNIT         _DATA_GROUP_
+            DATA    0053H     001AH     UNIT         ?DT?JKZK
+            IDATA   006DH     0001H     UNIT         ?STACK
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0003H     ABSOLUTE     
+            CODE    0003H     0008H     UNIT         ?PR?_SEND?SBUF
+            CODE    000BH     0003H     ABSOLUTE     
+            CODE    000EH     0015H     UNIT         ?PR?_STATE?JKZK
+            CODE    0023H     0003H     ABSOLUTE     
+            CODE    0026H     0433H     UNIT         ?PR?TALK?JKZK
+            CODE    0459H     041DH     UNIT         ?PR?T0_INT?JKZK
+            CODE    0876H     038FH     UNIT         ?CO?JKZK
+            CODE    0C05H     024AH     UNIT         ?C?LIB_CODE
+BL51 BANKED LINKER/LOCATER V4.03                                                      04/06/2001  23:39:01  PAGE 2
+
+
+            CODE    0E4FH     0234H     UNIT         ?PR?JKZK
+            CODE    1083H     01ABH     UNIT         ?PR?_?APRINTF?JKZK
+            CODE    122EH     0187H     UNIT         ?PR?MAIN?JKZK
+            CODE    13B5H     015BH     UNIT         ?PR?_AD_GET?JKZK
+            CODE    1510H     0159H     UNIT         ?PR?TESTSELF?JKZK
+            CODE    1669H     0117H     UNIT         ?PR?INIT?JKZK
+            CODE    1780H     00BFH     UNIT         ?PR?ARG?JKZK
+            CODE    183FH     00B9H     UNIT         ?PR?LOAD_SETUP?JKZK
+            CODE    18F8H     00B2H     UNIT         ?PR?SOLAR?JKZK
+            CODE    19AAH     00B0H     UNIT         ?PR?_SETUP?JKZK
+            CODE    1A5AH     00ADH     UNIT         ?PR?CONTROL_SET?JKZK
+            CODE    1B07H     0084H     UNIT         ?PR?_AD?JKZK
+            CODE    1B8BH     0078H     UNIT         ?PR?_ASCANF?JKZK
+            CODE    1C03H     006FH     UNIT         ?PR?SAVE?JKZK
+            CODE    1C72H     0067H     UNIT         ?PR?VIEW?JKZK
+            CODE    1CD9H     0060H     UNIT         ?PR?KEY?JKZK
+            CODE    1D39H     005BH     UNIT         ?PR?REMOTE_SET?JKZK
+            CODE    1D94H     005AH     UNIT         ?PR?PASSWORD?JKZK
+            CODE    1DEEH     0052H     UNIT         ?PR?_EPROM?JKZK
+            CODE    1E40H     0050H     UNIT         ?PR?SERIAL?SBUF
+            CODE    1E90H     004DH     UNIT         ?PR?_WRITE_EPROM?JKZK
+            CODE    1EDDH     003CH     UNIT         ?PR?_OUTCHAR?JKZK
+            CODE    1F19H     003AH     UNIT         ?PR?_?APUTCHAR?JKZK
+            CODE    1F53H     0031H     UNIT         ?PR?_SET_EPROM?JKZK
+            CODE    1F84H     0028H     UNIT         ?PR?_SENDPACKET?SBUF
+            CODE    1FACH     0023H     UNIT         ?PR?_SENDSTR?SBUF
+            CODE    1FCFH     0023H     UNIT         ?PR?_RAD_GET?JKZK
+            CODE    1FF2H     0023H     UNIT         ?PR?WAIT_KEY?JKZK
+            CODE    2015H     001DH     UNIT         ?PR?_DELAY?JKZK
+            CODE    2032H     001AH     UNIT         ?PR?BUSY?JKZK
+            CODE    204CH     0017H     UNIT         ?PR?_LCD_OPR?JKZK
+            CODE    2063H     0014H     UNIT         ?PR?LCD_INIT?JKZK
+            CODE    2077H     000CH     UNIT         ?C_C51STARTUP
+
+
+
+OVERLAY MAP OF MODULE:   jkzk (SBUF)
+
+
+SEGMENT                           BIT_GROUP          DATA_GROUP 
+  +--> CALLED SEGMENT          START    LENGTH     START    LENGTH
+------------------------------------------------------------------
+?PR?T0_INT?JKZK                -----    -----      0022H    000EH
+  +--> ?PR?_AD_GET?JKZK
+  +--> ?PR?TALK?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?_OUTCHAR?JKZK
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?_SENDPACKET?SBUF
+
+?PR?_AD_GET?JKZK               -----    -----      0031H    0003H
+  +--> ?PR?_AD?JKZK
+
+?PR?_AD?JKZK                   -----    -----      0034H    0006H
+
+?PR?TALK?JKZK                  -----    -----      0030H    0001H
+BL51 BANKED LINKER/LOCATER V4.03                                                      04/06/2001  23:39:01  PAGE 3
+
+
+  +--> ?PR?_SENDPACKET?SBUF
+  +--> ?PR?_AD_GET?JKZK
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?ARG?JKZK
+
+?PR?_SENDPACKET?SBUF           -----    -----      0031H    0002H
+  +--> ?PR?_SEND?SBUF
+
+?PR?_EPROM?JKZK                -----    -----      -----    -----
+  +--> ?PR?JKZK
+
+?PR?JKZK                       -----    -----      -----    -----
+  +--> ?CO?JKZK
+  +--> ?PR?_?APRINTF?JKZK
+  +--> ?PR?_STATE?JKZK
+  +--> ?PR?_?APUTCHAR?JKZK
+  +--> ?PR?KEY?JKZK
+  +--> ?PR?_DELAY?JKZK
+  +--> ?PR?_LCD_OPR?JKZK
+
+?PR?_?APRINTF?JKZK             -----    -----      -----    -----
+  +--> ?CO?JKZK
+  +--> ?PR?_?APUTCHAR?JKZK
+
+?PR?_?APUTCHAR?JKZK            -----    -----      -----    -----
+  +--> ?PR?BUSY?JKZK
+
+?PR?KEY?JKZK                   -----    -----      -----    -----
+  +--> ?PR?_DELAY?JKZK
+  +--> ?CO?JKZK
+
+?PR?_LCD_OPR?JKZK              -----    -----      -----    -----
+  +--> ?PR?BUSY?JKZK
+
+?PR?_WRITE_EPROM?JKZK          -----    -----      -----    -----
+  +--> ?PR?_SET_EPROM?JKZK
+  +--> ?PR?JKZK
+
+?PR?_SET_EPROM?JKZK            -----    -----      -----    -----
+  +--> ?PR?JKZK
+
+?PR?ARG?JKZK                   -----    -----      -----    -----
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?JKZK
+
+*** NEW ROOT ***************************************************
+
+?C_C51STARTUP                  -----    -----      -----    -----
+  +--> ?PR?MAIN?JKZK
+
+?PR?MAIN?JKZK                  -----    -----      -----    -----
+  +--> ?PR?INIT?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+BL51 BANKED LINKER/LOCATER V4.03                                                      04/06/2001  23:39:01  PAGE 4
+
+
+  +--> ?CO?JKZK
+  +--> ?PR?_SENDSTR?SBUF
+  +--> ?PR?LCD_INIT?JKZK
+  +--> ?PR?KEY?JKZK
+  +--> ?PR?_?APRINTF?JKZK
+  +--> ?PR?_DELAY?JKZK
+  +--> ?PR?_LCD_OPR?JKZK
+  +--> ?PR?_RAD_GET?JKZK
+  +--> ?PR?SOLAR?JKZK
+  +--> ?PR?CONTROL_SET?JKZK
+  +--> ?PR?TESTSELF?JKZK
+  +--> ?PR?REMOTE_SET?JKZK
+  +--> ?PR?LOAD_SETUP?JKZK
+  +--> ?PR?VIEW?JKZK
+  +--> ?PR?_OUTCHAR?JKZK
+  +--> ?PR?SAVE?JKZK
+
+?PR?INIT?JKZK                  -----    -----      003AH    0001H
+  +--> ?PR?_OUTCHAR?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?LCD_INIT?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?_?APRINTF?JKZK
+  +--> ?PR?_DELAY?JKZK
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+  +--> ?PR?ARG?JKZK
+
+?PR?LCD_INIT?JKZK              -----    -----      -----    -----
+  +--> ?PR?_LCD_OPR?JKZK
+
+?PR?WAIT_KEY?JKZK              -----    -----      -----    -----
+  +--> ?CO?JKZK
+  +--> ?PR?_?APRINTF?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?KEY?JKZK
+
+?PR?_SENDSTR?SBUF              -----    -----      003BH    0003H
+  +--> ?PR?_SEND?SBUF
+
+?PR?_RAD_GET?JKZK              -----    -----      003DH    0001H
+  +--> ?PR?_DELAY?JKZK
+
+?PR?SOLAR?JKZK                 0021H.0  0000H.1    003AH    0001H
+  +--> ?PR?_LCD_OPR?JKZK
+  +--> ?PR?_RAD_GET?JKZK
+  +--> ?PR?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?_STATE?JKZK
+  +--> ?PR?KEY?JKZK
+
+?PR?CONTROL_SET?JKZK           -----    -----      003AH    000FH
+  +--> ?PR?PASSWORD?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?_SETUP?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+BL51 BANKED LINKER/LOCATER V4.03                                                      04/06/2001  23:39:01  PAGE 5
+
+
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?ARG?JKZK
+  +--> ?PR?_LCD_OPR?JKZK
+
+?PR?PASSWORD?JKZK              -----    -----      0049H    0005H
+  +--> ?CO?JKZK
+  +--> ?PR?_?APRINTF?JKZK
+  +--> ?PR?_ASCANF?JKZK
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+
+?PR?_ASCANF?JKZK               -----    -----      004EH    0005H
+  +--> ?PR?WAIT_KEY?JKZK
+  +--> ?PR?JKZK
+  +--> ?CO?JKZK
+
+?PR?_SETUP?JKZK                -----    -----      0049H    000AH
+  +--> ?PR?_LCD_OPR?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+  +--> ?PR?KEY?JKZK
+  +--> ?PR?_DELAY?JKZK
+
+?PR?TESTSELF?JKZK              -----    -----      003AH    0003H
+  +--> ?CO?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+  +--> ?PR?KEY?JKZK
+  +--> ?PR?_?APRINTF?JKZK
+  +--> ?PR?_RAD_GET?JKZK
+  +--> ?PR?_DELAY?JKZK
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?_LCD_OPR?JKZK
+
+?PR?REMOTE_SET?JKZK            0021H.0  0000H.1    003AH    0001H
+  +--> ?PR?PASSWORD?JKZK
+  +--> ?PR?_EPROM?JKZK
+  +--> ?PR?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?_SETUP?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+  +--> ?PR?_SET_EPROM?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?ARG?JKZK
+  +--> ?PR?_LCD_OPR?JKZK
+
+?PR?LOAD_SETUP?JKZK            -----    -----      003AH    0009H
+  +--> ?PR?PASSWORD?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?_SETUP?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+  +--> ?PR?_SET_EPROM?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?PR?ARG?JKZK
+  +--> ?PR?_LCD_OPR?JKZK
+BL51 BANKED LINKER/LOCATER V4.03                                                      04/06/2001  23:39:01  PAGE 6
+
+
+
+?PR?VIEW?JKZK                  -----    -----      003AH    0003H
+  +--> ?PR?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?WAIT_KEY?JKZK
+
+?PR?SAVE?JKZK                  -----    -----      003AH    0001H
+  +--> ?PR?_SET_EPROM?JKZK
+  +--> ?PR?JKZK
+  +--> ?PR?_WRITE_EPROM?JKZK
+  +--> ?CO?JKZK
+  +--> ?PR?_SENDSTR?SBUF
+
+
+
+SYMBOL TABLE OF MODULE:  jkzk (SBUF)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        ?C?CLDPTR
+  C:0C05H         PUBLIC        ?C?CLDPTR
+  -------         ENDMOD        ?C?CLDPTR
+
+  -------         MODULE        ?C?CSTOPTR
+  C:0C1EH         PUBLIC        ?C?CSTOPTR
+  -------         ENDMOD        ?C?CSTOPTR
+
+  -------         MODULE        ?C?IMUL
+  C:0C40H         PUBLIC        ?C?IMUL
+  -------         ENDMOD        ?C?IMUL
+
+  -------         MODULE        ?C?UIDIV
+  C:0C52H         PUBLIC        ?C?UIDIV
+  -------         ENDMOD        ?C?UIDIV
+
+  -------         MODULE        ?C?SIDIV
+  C:0CA7H         PUBLIC        ?C?SIDIV
+  -------         ENDMOD        ?C?SIDIV
+
+  -------         MODULE        ?C?ILDPTR
+  C:0CDDH         PUBLIC        ?C?ILDPTR
+  -------         ENDMOD        ?C?ILDPTR
+
+  -------         MODULE        ?C?ULDIV
+  C:0D44H         PUBLIC        ?C?ULDIV
+  -------         ENDMOD        ?C?ULDIV
+
+  -------         MODULE        ?C?OFFXADD
+  C:0DD6H         PUBLIC        ?C?OFFXADD
+  -------         ENDMOD        ?C?OFFXADD
+
+  -------         MODULE        ?C?PLDPTR
+  C:0DE2H         PUBLIC        ?C?PLDPTR
+  -------         ENDMOD        ?C?PLDPTR
+
+  -------         MODULE        ?C?CCASE
+BL51 BANKED LINKER/LOCATER V4.03                                                      04/06/2001  23:39:01  PAGE 7
+
+
+  C:0E02H         PUBLIC        ?C?CCASE
+  -------         ENDMOD        ?C?CCASE
+
+  -------         MODULE        ?C_IBP
+  D:0010H         PUBLIC        ?C_IBP
+  -------         ENDMOD        ?C_IBP
+
+  -------         MODULE        ?C?PLDIDATA
+  C:0E28H         PUBLIC        ?C?PLDIDATA
+  -------         ENDMOD        ?C?PLDIDATA
+
+  -------         MODULE        ?C?PLDXDATA
+  C:0E31H         PUBLIC        ?C?PLDXDATA
+  -------         ENDMOD        ?C?PLDXDATA
+
+  -------         MODULE        ?C?PLDPDATA
+  C:0E3AH         PUBLIC        ?C?PLDPDATA
+  -------         ENDMOD        ?C?PLDPDATA
+
+  -------         MODULE        ?C?PLDCODE
+  C:0E43H         PUBLIC        ?C?PLDCODE
+  -------         ENDMOD        ?C?PLDCODE
+
+
+
+FUNCTION REGISTER MASKS
+
+
+FUNCTION . . . . . . REG MASK
+-----------------------------
+
+BUSY . . . . . . . . @0xf001
+KEY. . . . . . . . . @0xf39f
+LCD_INIT . . . . . . @0xf003
+SAVE . . . . . . . . @0xf37f
+SERIAL . . . . . . . @0xf0c0
+WAIT_KEY . . . . . . @0xf39f
+_?APUTCHAR . . . . . @0xf083
+_AD. . . . . . . . . @0xf09f
+_DELAY . . . . . . . @0xf007
+_EPROM . . . . . . . @0xf077
+_LCD_OPR . . . . . . @0xf003
+_OUTCHAR . . . . . . @0xf003
+_SEND. . . . . . . . @0xc000
+_SENDPACKET. . . . . @0xf007
+_SENDSTR . . . . . . @0xf371
+_SET_EPROM . . . . . @0xf003
+_STATE . . . . . . . @0xf081
+_WRITE_EPROM . . . . @0xf077
+
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

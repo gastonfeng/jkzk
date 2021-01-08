@@ -1,0 +1,334 @@
+C51 COMPILER V6.12  SBUF                                                                   06/29/2002 14:27:00 PAGE 1   
+
+
+C51 COMPILER V6.12, COMPILATION OF MODULE SBUF
+OBJECT MODULE PLACED IN .\Sbuf.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE .\Sbuf.c OPTIMIZE(4,SPEED) 
+
+stmt level    source
+
+   1          /*==================================*/
+   2          /*  serial port                     */
+   3          /*==================================*/
+   4          
+   5          #include <AT89x52.h>
+   6          
+   7          extern bit received;
+   8          extern idata unsigned char buf[6];
+   9          extern unsigned char point;
+  10          extern bit TXEN;
+  11          
+  12          /*==============================================================*/
+  13          /*  command string format:                                      */
+  14          /*  begin code,operation code,address code, data code, checksum */
+  15          /*  0xaa,      1(read,2-write),1,           0x0,0x0(int),0x0    */
+  16          /*==============================================================*/ 
+  17          void serial() interrupt 4 using 1
+  18          {
+  19   1          static bit rec;
+  20   1      	if(RI){
+  21   2      		RI=0;
+  22   2      		if(SBUF==0xaa){
+  23   3      			point=0;
+  24   3      			rec=0;
+  25   3      		}
+  26   2      		if(!rec){
+  27   3      			buf[point]=SBUF;
+  28   3      			point++;
+  29   3      			if(point>=6){
+  30   4      				if((unsigned char)(buf[0]+buf[1]+buf[2]+buf[3]+buf[4])==buf[5]){
+  31   5      					received=1;
+  32   5         					point=0;
+  33   5      					rec=1;
+  34   5      				}
+  35   4      				else{
+  36   5      					point=0;
+  37   5      				}
+  38   4      			}
+  39   3      	    }
+  40   2      	}
+  41   1      //    else{
+  42   1      	if(TI){
+  43   2          	TI=0;
+  44   2          	TXEN=1;
+  45   2          }
+  46   1      }
+  47          
+  48          send(unsigned char cc)
+  49          {
+  50   1      	while(!TXEN);
+  51   1      	SBUF=cc;
+  52   1      	TXEN=0;
+  53   1      }
+  54          /*  单片机串口通讯基本程序  */
+  55          /*  无硬件握手信号          */
+C51 COMPILER V6.12  SBUF                                                                   06/29/2002 14:27:00 PAGE 2   
+
+  56          /*  中断接收、查询发送      */
+  57          /****************************/
+  58          
+  59          
+  60          /*------------------*/
+  61          /*  单字符发送      */
+  62          /*------------------*/
+  63          //send(unsigned char Data)
+  64          //{
+  65          //	while(TI);
+  66          //    SBUF=Data;
+  67          //    delay(10);
+  68          //}
+  69          
+  70          /*------------------------------*/
+  71          /*  发送一个字符串，直到字符为0 */
+  72          /*------------------------------*/
+  73          sendstr(unsigned char *Data)
+  74          {
+  75   1          while(*Data!=0){
+  76   2          	send(*Data);
+  77   2              Data++;
+  78   2          }
+  79   1      }
+  80          
+  81          /*----------------------------------*/
+  82          /* Packet send                      */
+  83          /*  format:                         */
+  84          /*  0xaa,address code,data,checksum */
+  85          /*----------------------------------*/
+  86          sendpacket(unsigned char Code,unsigned int Data)
+  87          {
+  88   1          unsigned char checksum;
+  89   1          union{
+  90   1              unsigned int word;
+  91   1              unsigned char signle[2];
+  92   1          }t;
+  93   1          t.word=Data;
+  94   1          send(0xaa);
+  95   1          checksum=0xaa;
+  96   1          send(Code);
+  97   1          checksum+=Code;
+  98   1          send(t.signle[1]);
+  99   1          checksum+=t.signle[1];
+ 100   1          send(t.signle[0]);
+ 101   1          checksum+=t.signle[0];
+ 102   1          send(checksum);
+ 103   1      }
+ 104              
+ 105          
+ 106          /*--------------------------*/
+ 107          /*  调制解调器初始化        */
+ 108          /*  设置为无回显、数字回应  */
+ 109          /*--------------------------*/
+ 110          
+ 111          /*--------------------------*/
+ 112          /*  串行通讯中断程序        */
+ 113          /*  接收中断将字符          */
+ 114          /*  发送中断清除发送标志    */
+ 115          /*--------------------------*/
+ 116          /*interrupt [0x23] void SCON_int (void)*/
+ 117          //void SCON_int(void) interrupt 4
+C51 COMPILER V6.12  SBUF                                                                   06/29/2002 14:27:00 PAGE 3   
+
+ 118          //{
+ 119          //    if(RI){
+ 120          //        buf[bufin]=SBUF;
+ 121          //        bufin>=(sizeof(buf)-1)?bufin=0:bufin++;
+ 122          //        RI=0;
+ 123          //    }
+ 124          //    TI=0;
+ 125          //}
+ 126          
+ 127          //unsigned char recviced()
+ 128          //{
+ 129            //  idata unsigned char i;
+ 130              //if(bufin!=bufout){
+ 131                //  return 1;
+ 132                  //for(i=bufout;i!=bufin;){
+ 133                    //  if(buf[i]==13)return 1;
+ 134                      //i>=(sizeof(buf)-1)?i=0:i++;
+ 135          //        }
+ 136            //  }
+ 137          //    return 0;
+ 138          //}
+ 139          
+ 140          //unsigned int getb()
+ 141          //{
+ 142          //    idata unsigned char i;
+ 143          //    if(bufout!=bufin){
+ 144          //        i=buf[bufout];
+ 145          //        bufout>=(sizeof(buf)-1)?bufout=0:bufout++;
+ 146          //        return i;
+ 147          //    }
+ 148          //    else return 0xffff;
+ 149          //}
+ 150          
+ 151          /*unsigned char getcode()
+ 152          {
+ 153              unsigned int b1=0xffff,b2=0xffff;
+ 154              while((b1=getb())!=0xffff){
+ 155          	if(b1==13)return b2;
+ 156          	if((b2=getb())==13)return b1;
+ 157              }
+ 158          } */
+ 159          
+ 160          /*unsigned char dial()
+ 161          {
+ 162              unsigned char i,phone[13];
+ 163              for(i=0;i<13;i++)phone[i]=eprom(PHONE+i);
+ 164              bufin=bufout=0;
+ 165              sendstr("ATDT");
+ 166              sendstr(phone);
+ 167              send('\r');
+ 168              for(i=0;i<120;i++){
+ 169          	delay(500);
+ 170          	if(recviced())break;
+ 171              }
+ 172              if(getcode()==CONNECT)return 1;
+ 173              else return 0;
+ 174          } */
+ 175          
+ 176          /*sendw(unsigned int a)
+ 177          {
+ 178              idata union{
+ 179              unsigned int a;
+C51 COMPILER V6.12  SBUF                                                                   06/29/2002 14:27:00 PAGE 4   
+
+ 180              unsigned char c[2];
+ 181              }d;
+ 182              d.a=a;
+ 183              send(d.c[1]);
+ 184              send(d.c[0]);
+ 185          }
+ 186          
+ 187          unsigned int getw(){
+ 188              idata union{
+ 189              unsigned int a;
+ 190              unsigned char b[2];
+ 191              }c;
+ 192              idata unsigned int i;
+ 193              while((i=getb())==0xffff);
+ 194              c.b[0]=i;
+ 195              while((i=getb())==0xffff);
+ 196              c.b[1]=i;
+ 197              return c.a;
+ 198          }
+ 199          
+ 200            talk()
+ 201          {
+ 202              idata unsigned char flag=1;
+ 203              idata unsigned int CheckSum;
+ 204              idata unsigned int a,b;
+ 205          //    local=eprom(LOCAL);
+ 206              while(flag){
+ 207          	switch(getb()){
+ 208          		case NowData:{
+ 209                          CheckSum=0;
+ 210                          b=btv;
+ 211                          CheckSum+=b;
+ 212          				sendw(b);
+ 213                          for(a=0;a<6;a++){
+ 214                              b=0;
+ 215                              CheckSum+=b;
+ 216                              sendw(b);
+ 217                          }
+ 218                          b=ad_get(LOAD_V);
+ 219                          CheckSum+=b;
+ 220                          sendw(b);
+ 221                          b=ad_get(TEMP_BT);
+ 222                          CheckSum+=b;
+ 223                          sendw(b);
+ 224                          sendw(0); /*in_temp,nouse*/
+ 225          /*                b=ad_get(LOAD_I);
+ 226                          CheckSum+=b;
+ 227                          sendw(b);
+ 228                          b=ad_get(BT_I);
+ 229                          CheckSum+=b;
+ 230                          sendw(b);
+ 231                          for(a=0;a<6;a++){
+ 232                              b=ad_get(SR_I0+a);
+ 233                              delay(1000);
+ 234                              CheckSum+=b;
+ 235                              sendw(b);
+ 236                          }
+ 237                          b=eprom(DATA);
+ 238                          CheckSum+=b;
+ 239                          sendw(b);
+ 240                          b=eprom(DATA+1);
+ 241                          CheckSum+=b;
+C51 COMPILER V6.12  SBUF                                                                   06/29/2002 14:27:00 PAGE 5   
+
+ 242                          sendw(b);
+ 243                          b=chargeah%65536;
+ 244                          CheckSum+=b;
+ 245                          sendw(b);
+ 246                          b=chargeah/65536;
+ 247                          CheckSum+=b;
+ 248                          sendw(b);
+ 249                          b=dischargeah%65536;
+ 250                          CheckSum+=b;
+ 251                          sendw(b);
+ 252                          b=dischargeah/65536;
+ 253                          CheckSum+=b;
+ 254                          sendw(b);
+ 255                          b=hour*256+min;
+ 256                          CheckSum+=b;
+ 257                          sendw(b);
+ 258                          b=load*256+solar_state;
+ 259                          CheckSum+=b;
+ 260                          sendw(b);
+ 261                          sendw(CheckSum);
+ 262          			break;
+ 263          		}
+ 264          		case HistoryData:{
+ 265                      CheckSum=0;
+ 266          			for(a=DATA_INDEX;a<DATA+4*32;a++){
+ 267          				b=eprom(a);
+ 268                          CheckSum+=b;
+ 269          				sendw(b);
+ 270          			}
+ 271                      sendw(CheckSum);
+ 272          			break;
+ 273          		}
+ 274          		case SetData:{
+ 275                      CheckSum=0;
+ 276          			for(a=7;a<37;a++){
+ 277          				b=eprom(a);
+ 278                          CheckSum+=b;
+ 279          				sendw(b);
+ 280          			}
+ 281                      sendw(CheckSum);
+ 282          			break;
+ 283          		}
+ 284          		case SendSetData:{
+ 285          			set_eprom(EWEN);
+ 286          			for(a=0;a<30;){
+ 287          				send(a);
+ 288          				b=getw();
+ 289          				if(getw()==b){
+ 290          					write_eprom(a,b);
+ 291          					a++;
+ 292          				}
+ 293          			}
+ 294          			set_eprom(EWDS);
+ 295          			send(30);
+ 296          			break;
+ 297          		}
+ 298          		case NO_CARRIER:flag=0;
+ 299          	}
+ 300              }
+ 301          }*/
+
+
+C51 COMPILER V6.12  SBUF                                                                   06/29/2002 14:27:00 PAGE 6   
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    167    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
